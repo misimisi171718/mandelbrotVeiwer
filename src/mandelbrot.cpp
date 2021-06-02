@@ -4,6 +4,7 @@
 #include <math.h>
 #include <SDL2/SDL.h>
 #include <CL/cl.hpp>
+#include <complex>
 
 #define WINDOW_WIDTH 700
 
@@ -172,7 +173,6 @@ void drawMandelbrot(
     std::cout.flush();
 
     CLC(queue.enqueueReadBuffer(bufer, CL_TRUE, 0, sizeof(cl_uchar3)*winW*winH, pixels));
-
     SDL_UpdateTexture(text, NULL, pixels, winW*sizeof(cl_uchar3));
 }
 
