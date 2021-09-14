@@ -1,0 +1,9 @@
+[submodule "lib/OpenCL-SDK"]
+	path = lib/OpenCL-SDK
+	url = https://github.com/KhronosGroup/OpenCL-SDK.git
+[submodule "lib/SDL"]
+	path = lib/SDL
+	url = https://github.com/libsdl-org/SDL
+[submodule "lib/SDL_ttf"]
+	path = lib/SDL_ttf
+	url = https://github.com/libsdl-org/SDL_ttf
