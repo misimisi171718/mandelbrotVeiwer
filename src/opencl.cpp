@@ -122,7 +122,7 @@ void drawMandelbrot(
         CL_MEM_WRITE_ONLY|CL_MEM_HOST_READ_ONLY,
         sizeof(cl_double3)*winW*winH);
     
-    cl_float2 startFloat = {start.real(),start.imag()};
+    cl_float2 startFloat = {static_cast<float>(start.real()),static_cast<float>(start.imag())};
 
     kernel.setArg(0,bufer);
     kernel.setArg(1,offset);

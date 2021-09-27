@@ -10,6 +10,13 @@
 
 #define WINDOW_WIDTH 700
 
+enum windowUPdateState{
+    noUpdate = 0,
+    update = 1,
+    reDraw = 2,
+    reSize = 3
+};
+
 using namespace std::complex_literals;
 
 void updateWindow(SDL_Renderer* rend, SDL_Texture* text)
@@ -24,17 +31,6 @@ void resizeWindow(SDL_Renderer* rend, SDL_Texture*& text, SDL_Window* win)
     int w, h;
     SDL_GetWindowSize(win, &w, &h);
     text = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, w, h);
-}
-
-std::complex<double> calcNewCenter(
-    double mousex,double mousey,
-    double winW,double winH,
-    double zoom)
-{
-    return {
-        ((mousex / winW) - 0.5) / (zoom                ),
-        ((mousey / winH) - 0.5) / (zoom * (winW / winH))
-    };
 }
 
 int main()
@@ -60,6 +56,7 @@ int main()
     bool open = true;
     std::array<int,2> mouseMove{0,0};
     bool julia = false;
+    windowUPdateState update = windowUPdateState::reSize;
     while (open) {
         while(SDL_PollEvent(&event))
         {
@@ -72,15 +69,11 @@ int main()
                 switch (event.window.event)
                 {
                 case SDL_WINDOWEVENT_RESIZED:
-                    resizeWindow(renderer, texture, window);
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reSize,update);
                     break;
                 case SDL_WINDOWEVENT_MOVED:
-                    updateWindow(renderer,texture);
-                    break;
                 case SDL_WINDOWEVENT_EXPOSED:
-                    updateWindow(renderer, texture);
+                    update = std::max(windowUPdateState::update,update);
                     break;
                 default:
                     break;
@@ -90,13 +83,11 @@ int main()
                 if (event.wheel.y < 0)
                 {
                     zoom = zoom * 1.1;
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reDraw,update);
                     break;
                 }else if(event.wheel.y > 0){
                     zoom = zoom / 1.1;
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reDraw,update);
                     break;
                 }
                 break;
@@ -111,36 +102,30 @@ int main()
                     zoom = 0.25;
                     center = {0,0};
                     start = {0,0};
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reDraw,update);
                     break;
                 case SDLK_w:
                     center -= 1/(zoom*2) * 1.0i;
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reDraw,update);
                     break;
                 case SDLK_s:
                     center += 1/(zoom*2) * 1.0i;
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reDraw,update);
                     break;
                 case SDLK_a:
                     center -= 1/(zoom*2);
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reDraw,update);
                     break;
                 case SDLK_d:
                     center += 1/(zoom*2);
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reDraw,update);
                     break;
                 case SDLK_q:
                     open = 0;
                     break;
                 case SDLK_e:
                     julia = !julia;
-                    drawMandelbrot(texture,center,start,zoom,julia);
-                    updateWindow(renderer,texture);
+                    update = std::max(windowUPdateState::reDraw,update);
                     break;
                 break;
             }
@@ -154,8 +139,7 @@ int main()
             SDL_GetWindowSize(window,&winW,&winH);
             center -= mouseMove[1]/std::abs(zoom*winH) * 1.0i;
             center -= mouseMove[0]/std::abs(zoom*winW);
-            drawMandelbrot(texture,center,start,zoom,julia);
-            updateWindow(renderer,texture);
+            update = windowUPdateState::reDraw;
         }
         if(mouseState & SDL_BUTTON_RMASK)
         {
@@ -163,9 +147,17 @@ int main()
             SDL_GetWindowSize(window,&winW,&winH);
             start -= mouseMove[1]/std::abs(zoom*winH) * 1.0i;
             start -= mouseMove[0]/std::abs(zoom*winW);
-            drawMandelbrot(texture,center,start,zoom,julia);
-            updateWindow(renderer,texture);
+            update = windowUPdateState::reDraw;
         }
+
+        if(update >= windowUPdateState::reSize)
+            resizeWindow(renderer,texture,window);
+        if(update >= windowUPdateState::reDraw)
+            drawMandelbrot(texture,center,start,zoom,julia);
+        if(update >= windowUPdateState::update)
+            updateWindow(renderer,texture);
+
+        update = windowUPdateState::noUpdate;
         mouseMove = {0,0};
         SDL_Delay(1000/30);
     }
