@@ -7,6 +7,7 @@
 #include <array>
 
 #include "opencl.hpp"
+#include "button.hpp"
 
 #define WINDOW_WIDTH 700
 
@@ -19,18 +20,13 @@ enum windowUPdateState{
 
 using namespace std::complex_literals;
 
-void updateWindow(SDL_Renderer* rend, SDL_Texture* text)
+std::string locationString(const std::complex<double> Z, const std::complex<double> C)
 {
-    SDL_RenderCopy(rend, text, NULL, NULL);
-    SDL_RenderPresent(rend);
-}
-
-void resizeWindow(SDL_Renderer* rend, SDL_Texture*& text, SDL_Window* win)
-{
-    SDL_DestroyTexture(text);
-    int w, h;
-    SDL_GetWindowSize(win, &w, &h);
-    text = SDL_CreateTexture(rend, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, w, h);
+    std::string ret = "Z: ";
+    ret += std::to_string(Z.real()) + " + " + std::to_string(Z.imag()) + "i ";
+    ret += "C: ";
+    ret += std::to_string(C.real()) + " + " + std::to_string(C.imag()) + "i ";
+    return ret;
 }
 
 int main()
@@ -46,6 +42,7 @@ int main()
     SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_WIDTH, SDL_WINDOW_RESIZABLE, &window, &renderer);
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
+
     texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET,
@@ -56,7 +53,29 @@ int main()
     bool open = true;
     std::array<int,2> mouseMove{0,0};
     bool julia = false;
+    bool shift = false;
     windowUPdateState update = windowUPdateState::reSize;
+
+    button locationInfo{renderer, locationString(center,start)};
+    locationInfo.setPos({5,5});
+
+    button juliaTogle{renderer, "julia/mandelbrot" };
+    juliaTogle.setPos({5,50});
+    juliaTogle.onClick([&julia](){
+        julia = !julia;
+    });
+
+    button reset{renderer, "reset"};
+    reset.setPos({5,90});
+    reset.onClick([&](){
+        zoom = 0.25;
+        center = {0,0};
+        start = {0,0};
+    });
+
+    button zoomInfo{renderer, std::to_string(zoom)};
+    zoomInfo.setPos({5,130});
+
     while (open) {
         while(SDL_PollEvent(&event))
         {
@@ -95,6 +114,10 @@ int main()
                 mouseMove[0] += event.motion.xrel;
                 mouseMove[1] += event.motion.yrel;
                 break;
+            case SDL_MOUSEBUTTONDOWN:
+                juliaTogle.mouseEvent(event.button);
+                reset.mouseEvent(event.button);
+                break;
             case SDL_KEYDOWN:
                 switch (event.key.keysym.sym)
                 {
@@ -127,13 +150,26 @@ int main()
                     julia = !julia;
                     update = std::max(windowUPdateState::reDraw,update);
                     break;
+                case SDLK_LSHIFT:
+                    shift = true;
+                    break;
                 break;
+            case SDL_KEYUP:
+                switch (event.key.keysym.sym)
+                {
+                case SDLK_LSHIFT:
+                    shift = false;
+                    break;
+                
+                default:
+                    break;
+                }
             }
             
             }
         }
         auto mouseState = SDL_GetMouseState(nullptr,nullptr);
-        if(mouseState & SDL_BUTTON_LMASK)
+        if(mouseState & SDL_BUTTON_LMASK && !shift)
         {
             int winH,winW;
             SDL_GetWindowSize(window,&winW,&winH);
@@ -141,7 +177,7 @@ int main()
             center -= mouseMove[0]/std::abs(zoom*winW);
             update = windowUPdateState::reDraw;
         }
-        if(mouseState & SDL_BUTTON_RMASK)
+        if(mouseState & SDL_BUTTON_RMASK || (mouseState & SDL_BUTTON_LMASK && shift))
         {
             int winH,winW;
             SDL_GetWindowSize(window,&winW,&winH);
@@ -150,12 +186,29 @@ int main()
             update = windowUPdateState::reDraw;
         }
 
+
         if(update >= windowUPdateState::reSize)
-            resizeWindow(renderer,texture,window);
+        {
+            SDL_DestroyTexture(texture);
+            int w, h;
+            SDL_GetWindowSize(window, &w, &h);
+            texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, w, h);
+        }
         if(update >= windowUPdateState::reDraw)
+        {
+            locationInfo.setText(locationString(center,start));
+            zoomInfo.setText(std::to_string(zoom));
             drawMandelbrot(texture,center,start,zoom,julia);
+        }
         if(update >= windowUPdateState::update)
-            updateWindow(renderer,texture);
+        {
+            SDL_RenderCopy(renderer, texture, NULL, NULL);
+            juliaTogle.draw();
+            locationInfo.draw();
+            zoomInfo.draw();
+            reset.draw();
+            SDL_RenderPresent(renderer);
+        }
 
         update = windowUPdateState::noUpdate;
         mouseMove = {0,0};
