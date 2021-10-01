@@ -53,7 +53,6 @@ int main()
     bool open = true;
     std::array<int,2> mouseMove{0,0};
     bool julia = false;
-    bool shift = false;
     windowUPdateState update = windowUPdateState::reSize;
 
     button locationInfo{renderer, locationString(center,start)};
@@ -150,26 +149,12 @@ int main()
                     julia = !julia;
                     update = std::max(windowUPdateState::reDraw,update);
                     break;
-                case SDLK_LSHIFT:
-                    shift = true;
-                    break;
-                break;
-            case SDL_KEYUP:
-                switch (event.key.keysym.sym)
-                {
-                case SDLK_LSHIFT:
-                    shift = false;
-                    break;
-                
-                default:
-                    break;
-                }
             }
-            
             }
         }
+        bool shift = SDL_GetModState() & KMOD_SHIFT;
         auto mouseState = SDL_GetMouseState(nullptr,nullptr);
-        if(mouseState & SDL_BUTTON_LMASK && !shift)
+        if(shift ? mouseState & SDL_BUTTON_RMASK : mouseState & SDL_BUTTON_LMASK)
         {
             int winH,winW;
             SDL_GetWindowSize(window,&winW,&winH);
@@ -177,7 +162,7 @@ int main()
             center -= mouseMove[0]/std::abs(zoom*winW);
             update = windowUPdateState::reDraw;
         }
-        if(mouseState & SDL_BUTTON_RMASK || (mouseState & SDL_BUTTON_LMASK && shift))
+        if(!shift ? mouseState & SDL_BUTTON_RMASK : mouseState & SDL_BUTTON_LMASK)
         {
             int winH,winW;
             SDL_GetWindowSize(window,&winW,&winH);
